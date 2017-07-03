@@ -1,0 +1,16 @@
+{
+  "name": "play-git",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "debayan3007",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.16.2",
+    "request": "^2.81.0",
+    "yargs": "^8.0.2"
+  }
+}
