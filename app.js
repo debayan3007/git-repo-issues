@@ -32,14 +32,15 @@ const argv = yargs
   .alias('help', 'h')
   .argv;
 
-var user = argv.user || 'd3';
+var username = argv.user || 'd3';
 var repo = argv.repo || 'd3';
 var status = argv.status || 'closed';
-var gitApiUrl = `https://api.github.com/repos/${user}/${repo}/issues\?state\=${status}`
+var avatar_url;
+var gitApiUrl = `https://api.github.com/repos/${username}/${repo}/issues\?state\=${status}`
 
 // console.log(argv);
 console.log({
-  user,
+  username,
   repo,
   status,
   gitApiUrl
@@ -85,7 +86,6 @@ github.authenticate({
 // });
 
 axios.get(gitApiUrl).then((response) => {
-  console.log(response.data[0].user);
   userList  = (response.data.map((elem) => {
     return {
       user: elem.user.login,
@@ -96,6 +96,15 @@ axios.get(gitApiUrl).then((response) => {
   // console.log(userList.map(elem => axios.get(elem.followers_url)));
   // console.log(userList);
 
+
+  axios.get(`https://api.github.com/users/${username}`).then((response) => {
+    avatar_url = response.data.avatar_url;
+    console.log(avatar_url);
+  }).catch((e) => {
+    console.log(e.message);
+  });
+
+  
   axios.all(userList.map(elem => axios.get(elem.followers_url)))
     .then(axios.spread((...args) => {
       for (var i in args) {
@@ -108,7 +117,7 @@ axios.get(gitApiUrl).then((response) => {
         userDisp += userList[i].user + '(' + userList[i].followers + ')' + '<br/>'
       }
       app.get('/', (req, res) => {
-        res.send('<p>/d3/d3/</p><p>'+ userList.length +'</p><img src="'+userList.avatar_url+' alt="'+userList.avatar_url+'" height="42" width="42"><p innerHTML=' + userDisp + '></p>');
+        res.send('<p>/' + username + '/' + repo + '/</p><p>'+ userList.length +'</p><img src="'+avatar_url+' alt="'+avatar_url+'" height="80" width="80"><p innerHTML=' + userDisp + '></p>');
       });
     }).catch((e) => {
       console.log(e.message);
