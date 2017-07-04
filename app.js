@@ -1,41 +1,131 @@
 const yargs = require('yargs');
 const axios = require('axios');
+const request = require('request');
+const GitHubApi = require('node-github');
+const express = require('express');
+const hbs = require('hbs');
+
+const port = process.env.PORT || 3000;
+
+const argv = yargs
+  .options({
+    u: {
+      demand: false,
+      alias: 'user',
+      describe: 'User\'s name',
+      string: true
+    },
+    r: {
+      demand:  false,
+      alias: 'repo',
+      describe: 'repository name',
+      string: true
+    },
+    s: {
+      demand: false,
+      alias: 'status',
+      describe: 'status of issues',
+      string: true
+    }
+  })
+  .help()
+  .alias('help', 'h')
+  .argv;
+
+var user = argv.user || 'd3';
+var repo = argv.repo || 'd3';
+var status = argv.status || 'closed';
+var gitApiUrl = `https://api.github.com/repos/${user}/${repo}/issues\?state\=${status}`
+
+// console.log(argv);
+console.log({
+  user,
+  repo,
+  status,
+  gitApiUrl
+});
+
+var app = express();
+
+app.set('view-engine', 'hbs');
+
+app.use(express.static(__dirname + '/public'));
+
+var github = new GitHubApi({
+    version: "3.0.0"
+});
 
 var userList = [];
-// const argv = yargs.argv;
-// console.log(argv);
 
-axios.get('https://api.github.com/repos/d3/d3/issues\?state\=closed').then((response) => {
-  console.log(Object.keys(response));
+// github.authenticate({
+//     type: "basic",
+//     username: "debayan3007",
+//     password: '9540287d8f1b6f66d88a0cd5fd0d393a935e006d'
+// });
+// curl -H "Authorization: 9540287d8f1b6f66d88a0cd5fd0d393a935e006d OAUTH-TOKEN" https://api.github.com
+
+// user token
+github.authenticate({
+    type: "token",
+    username: "debayan3007",
+    token: "9540287d8f1b6f66d88a0cd5fd0d393a935e006d",
+});
+
+// github.user.getFollowingFromUser({
+//     user: "d3"
+// }, function(err, res) {
+//     console.log(res);
+// });
+
+// github.issues.getAssignees({
+//   owner: 'd3',
+//   repo: 'd3'
+// }, function (err, res) {
+//   console.log(res);
+// });
+
+axios.get(gitApiUrl).then((response) => {
+  console.log(response.data[0].user);
   userList  = (response.data.map((elem) => {
     return {
-    	user: elem.user.login,
-      followers: elem.user.followers_url
+      user: elem.user.login,
+      followers_url: elem.user.followers_url,
+      avatar_url: elem.user.avatar_url
     };
   }));
-  // console.log(userList.map(elem => axios.get(elem.followers)));
+  // console.log(userList.map(elem => axios.get(elem.followers_url)));
   // console.log(userList);
-  axios.all(userList.map(elem => axios.get(elem.followers)))
+
+  axios.all(userList.map(elem => axios.get(elem.followers_url)))
     .then(axios.spread((...args) => {
       for (var i in args) {
-        console.log(args[i].data.length);
+        userList[i].followers = args[i].data.length;
       }
-    })).catch((e) => {
+      return userList;
+    })).then((user) => {
+      var userDisp = '';
+      for (var i in userList) {
+        userDisp += userList[i].user + '(' + userList[i].followers + ')' + '<br/>'
+      }
+      app.get('/', (req, res) => {
+        res.send('<p>/d3/d3/</p><p>'+ userList.length +'</p><img src="'+userList.avatar_url+' alt="'+userList.avatar_url+'" height="42" width="42"><p innerHTML=' + userDisp + '></p>');
+      });
+    }).catch((e) => {
       console.log(e.message);
     });
-})
-.catch((e) => {
+}).catch((e) => {
   // if (e.code === 'ENOTFOUND') {
   //   console.log('Unable to connect to API servers.');
   // } else {
+
+    app.get('/', (req, res) => {
+        res.render('home.hbs', {
+            repo: '/d3/d3/',
+            count: null,
+            users: null
+          });
+        });
     console.log(e.message);
   // }
 });
-
-// axios.all(userList.map((elem) => axios.get(elem.followers)))
-//   .then(axios.spread(function (...arg) {
-//     // Both requests are now complete
-//     for(var i in arg) {
-//       console.log(arg.data);
-//     }
-// }));
+app.listen(port);
